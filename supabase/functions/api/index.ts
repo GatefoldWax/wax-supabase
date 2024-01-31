@@ -3,23 +3,16 @@
 // This enables autocomplete, go to definition, etc.
 
 import express from 'npm:express@4.18.2'
+import apiRouter from '../../routes/api.router.ts';
 
-const app = express()
-app.use(express.json())
-const port = 3000
+const app = express();
 
-app.get('/hello-world', (req, res) => {
-  res.send('Hello World!')
-})
 
-app.post('/hello-world', (req, res) => {
-  const { name } = req.body
-  res.send(`Hello ${name}!`)
-})
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+app.use(express.json());
+
+app.use("/api", apiRouter);
+
 
 /* To invoke locally:
 
