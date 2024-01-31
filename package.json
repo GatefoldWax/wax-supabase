@@ -1,12 +1,16 @@
 {
-  "name": "wax-supabase",
-  "version": "1.0.0",
-  "description": "Supabase back-end using Deno",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+	"name": "wax-supabase",
+	"version": "1.0.0",
+	"description": "Supabase back-end using Deno",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"deploy": "supabase functions deploy --project-ref jxkaizmyfxwrhbvundhm --debug "
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"supabase": "^1.136.3"
+	}
 }
