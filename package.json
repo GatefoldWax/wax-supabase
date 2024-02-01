@@ -4,7 +4,6 @@
 	"description": "Supabase back-end using Deno",
 	"main": "index.js",
 	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1",
 		"deploy": "supabase functions deploy --project-ref jxkaizmyfxwrhbvundhm"
 	},
 	"keywords": [],
