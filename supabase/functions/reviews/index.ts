@@ -3,6 +3,7 @@ import express, {
 	Request,
 	Response,
 	Router,
+	ErrorRequestHandler,
 } from "npm:express@4.18.2";
 import format from "npm:pg-format";
 import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
@@ -22,7 +23,7 @@ interface Review {
 }
 
 //* models
-export const selectReviews = async (id?: string): Promise<Review[]> => {
+const selectReviews = async (id?: string): Promise<Review[]> => {
 	const whereClause = id ? `WHERE music_id = '${id}'` : "";
 
 	const formattedQuery = format(
@@ -37,7 +38,7 @@ export const selectReviews = async (id?: string): Promise<Review[]> => {
 	return rows as Review[];
 };
 
-export const insertReview = async (
+const insertReview = async (
 	music_id: string,
 	username: string,
 	rating: number,
@@ -69,7 +70,7 @@ export const insertReview = async (
 	return review;
 };
 
-export const deleteReview = async (id: string) => {
+const deleteReview = async (id: string) => {
 	const { rows } = await db.queryObject(
 		`DELETE FROM reviews
     WHERE review_id = $1
@@ -164,10 +165,47 @@ reviewRouter.route("/:music_id").get(getReviewsById).post(postReviewById);
 
 reviewRouter.route("/:review_id").delete(removeReview);
 
+//* error handlers
+const handleCustomError: ErrorRequestHandler = (err, _req, res, next) => {
+	if (err.status) {
+		res.status(err.status).send({ msg: err.msg });
+	} else next(err);
+};
+
+const handlePsqlErrors: ErrorRequestHandler = (err, _req, res, next) => {
+	switch (err.code) {
+		case "22P02":
+		case "23502":
+			res.status(400).send({ msg: "bad request" });
+			break;
+		case "23503":
+			res.status(404).send({ msg: "not found" });
+			break;
+		default:
+			next(err);
+			break;
+	}
+};
+
+const handle404 = (_req: Request, res: Response) => {
+	res.status(404).send({ msg: "incorrect path - path not found" });
+};
+
+const handleServerErrors: ErrorRequestHandler = (err, _req, res, next) => {
+	console.log(err);
+	res.status(500).send({ msg: "internal server error" });
+};
+
 //* listener
 const app = express();
 app.use(express.json());
 
 app.use("/reviews", reviewRouter);
+
+app.all("*", handle404);
+
+app.use(handlePsqlErrors);
+app.use(handleCustomError);
+app.use(handleServerErrors);
 
 app.listen(3030);

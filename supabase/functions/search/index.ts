@@ -166,37 +166,49 @@ const insertMusic = async (music: Music | Music[]) => {
 };
 
 //* controllers
-const getAllMusic = async (
+const getSearchedMusic = async (
 	req: Request,
 	res: Response,
 	next: NextFunction
-): void => {
-	await db.connect();
-	selectAllMusic(req.query)
-		.then(async (music) => {
-			await db.end();
-			res.status(200).send({ music });
-		})
-		.catch((err: Error) => {
-			console.log(err);
-		});
-};
-
-const addMusic = async (req: Request, res: Response, next: NextFunction) => {
-	const { body } = req;
+) => {
+	const { matchedMusic } = req.body;
 	try {
 		await db.connect();
-		(await insertMusic(body)) && res.status(201).send({ msg: "created" });
-		await db.end();
+		if (matchedMusic) {
+			const storedMusic = (await selectAllMusic(
+				undefined,
+				true
+			)) as Music[];
+			const storedMusicIds = storedMusic.map((music) => music.music_id);
+			const musicOverlap = storedMusic.filter((music) =>
+				matchedMusic.some(
+					(matched: Music) => matched.music_id === music.music_id
+				)
+			);
+			const musicDifference = matchedMusic.filter(
+				(music: Music) => !storedMusicIds.includes(music.music_id)
+			);
+			if (!musicDifference.length) {
+				await db.end();
+				res.status(200).send({ music: musicOverlap });
+			} else {
+				const insertedMusic = await insertMusic(musicDifference);
+				await db.end();
+				const mergedMusic = Array.isArray(insertedMusic)
+					? [...musicOverlap, ...insertedMusic!]
+					: [...musicOverlap, insertedMusic!];
+				res.status(200).send({ music: mergedMusic });
+			}
+		}
 	} catch (err) {
-		console.log(err);
+		next(err);
 	}
 };
 
 //* router
-const musicRouter = Router();
+const searchRouter = Router();
 
-musicRouter.route("/").get(getAllMusic).post(addMusic);
+searchRouter.route("/").post(getSearchedMusic);
 
 //* error handlers
 const handleCustomError: ErrorRequestHandler = (err, _req, res, next) => {
@@ -233,7 +245,9 @@ const handleServerErrors: ErrorRequestHandler = (err, _req, res, next) => {
 const app = express();
 app.use(express.json());
 
-app.use("/music", musicRouter);
+app.use("/api/search", searchRouter);
+
+app.all("*", handle404);
 
 app.use(handlePsqlErrors);
 app.use(handleCustomError);
