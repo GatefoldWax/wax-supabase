@@ -35,7 +35,6 @@ interface MusicQueries {
 }
 
 //* models
-
 const selectAllMusic = async (
 	queries?: MusicQueries,
 	all?: boolean
@@ -165,7 +164,7 @@ const insertMusic = async (music: Music | Music[]) => {
 	return rows as Music | Music[];
 };
 
-//* controller
+//* controllers
 const getAllMusic = async (
 	req: Request,
 	res: Response,
@@ -200,6 +199,7 @@ musicRouter.route("/").get(getAllMusic).post(addMusic);
 //* listener
 const app = express();
 app.use(express.json());
+
 app.use("/music", musicRouter);
 
 app.listen(3030);
