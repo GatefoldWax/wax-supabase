@@ -168,6 +168,7 @@ const client_secret = Deno.env.get("SPOTIFY_CLIENT_SECRET");
 
 export const refreshAccessToken = async () => {
   const refresh_token = Deno.env.get("SPOTIFY_REFRESH_TOKEN");
+  
   const authOptions = {
     url: "https://accounts.spotify.com/api/token",
     headers: {
@@ -189,7 +190,6 @@ export const refreshAccessToken = async () => {
     data: authOptions.form,
     headers: authOptions.headers,
   });
-
   return tokenData.data;
 };
 
@@ -198,6 +198,7 @@ export const searchSpotify = async (token: string, q: string, type: string) => {
 
   try {
     const matchedMusic = await axios({
+     
       method: "get",
       url: reqString,
       headers: {
@@ -253,7 +254,9 @@ const getSearchedMusic = async (
   next: NextFunction
 ) => {
   const { type, q } = req.body;
-  const matchedMusic = await getSearchedMusic(type, q);
+  const { access_token } = await refreshAccessToken();
+
+  const matchedMusic = await searchSpotify(access_token,q, type);
   try {
     await db.connect();
     if (matchedMusic) {
@@ -324,7 +327,7 @@ const handleServerErrors: ErrorRequestHandler = (err, _req, res, next) => {
 const app = express();
 app.use(express.json());
 
-app.use("/api/search", searchRouter);
+app.use("/search", searchRouter);
 
 app.all("*", handle404);
 
