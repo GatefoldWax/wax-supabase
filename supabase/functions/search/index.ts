@@ -8,6 +8,9 @@ import express, {
 import format from "npm:pg-format";
 import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
 
+import axios from "npm:axios";
+import { Buffer } from "buffer";
+
 //* connection
 const db = new Client(Deno.env.get("DB_CONN_STR"));
 
@@ -165,13 +168,102 @@ const insertMusic = async (music: Music | Music[]) => {
 	return rows as Music | Music[];
 };
 
+//!
+const client_id = Deno.env.get("SPOTIFY_CLIENT_ID");
+const client_secret = Deno.env.get("SPOTIFY_CLIENT_SECRET");
+
+export const refreshAccessToken = async () => {
+	const refresh_token = Deno.env.get("SPOTIFY_REFRESH_TOKEN");
+	const authOptions = {
+		url: "https://accounts.spotify.com/api/token",
+		headers: {
+			"content-type": "application/x-www-form-urlencoded",
+			Authorization:
+				"Basic " +
+				Buffer.from(client_id + ":" + client_secret).toString("base64"),
+		},
+		form: {
+			grant_type: "refresh_token",
+			refresh_token: refresh_token,
+		},
+		json: true,
+	};
+
+	const tokenData = await axios({
+		method: "post",
+		url: authOptions.url,
+		data: authOptions.form,
+		headers: authOptions.headers,
+	});
+
+	return tokenData.data;
+};
+
+export const searchSpotify = async (token: string, q: string, type: string) => {
+	const reqString = `https://api.spotify.com/v1/search?q=${q}&type=${type}`;
+
+	try {
+		const matchedMusic = await axios({
+			method: "get",
+			url: reqString,
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+		});
+
+		const spotifyItems = matchedMusic.data[`${type}s`].items;
+
+		const formattedSpotify = spotifyItems.map((item: any) => {
+			if (item.type === "track") {
+				return {
+					music_id: item.id,
+					artist_ids: item.artists.map((artist: any) => artist.id),
+					artist_names: item.artists.map(
+						(artist: any) => artist.name
+					),
+					name: item.name,
+					type: item.type,
+					tracks: null,
+					album_id: item.album.id,
+					genres: null,
+					preview: item.preview_url,
+					album_img: item.album.images[0].url,
+					release_date: item.album.release_date,
+				};
+			} else if (item.type === "album") {
+				return {
+					music_id: item.id,
+					artist_ids: item.artists.map((artist: any) => artist.id),
+					artist_names: item.artists.map(
+						(artist: any) => artist.name
+					),
+					name: item.name,
+					type: item.album_type,
+					tracks: [item.total_tracks],
+					album_id: item.id,
+					genres: null,
+					preview: null,
+					album_img: item.images[0].url,
+					release_date: item.release_date,
+				};
+			}
+		});
+
+		return formattedSpotify;
+	} catch (err) {
+		console.log(err);
+	}
+};
+//!
+
 //* controllers
 const getSearchedMusic = async (
 	req: Request,
 	res: Response,
 	next: NextFunction
 ) => {
-	const { matchedMusic } = req.body;
+	const { type, q } = req.body;
+	const matchedMusic = await getSearchedMusic(type, q);
 	try {
 		await db.connect();
 		if (matchedMusic) {
