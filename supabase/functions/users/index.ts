@@ -53,7 +53,7 @@ const addFriend = async (req: Request, res: Response, next: NextFunction) => {
   const { username } = req.params;
   try {
     const { following } = await checkFollows(username);
-    if (!following.includes()) {
+    if (!following.includes(new_follow)) {
       await updateFollows(username, new_follow);
       res
         .status(200)
