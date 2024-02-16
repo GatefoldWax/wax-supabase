@@ -162,7 +162,6 @@ const insertMusic = async (music: Music | Music[]) => {
   return rows as Music | Music[];
 };
 
-//!
 const client_id = Deno.env.get("SPOTIFY_CLIENT_ID");
 const client_secret = Deno.env.get("SPOTIFY_CLIENT_SECRET");
 
@@ -245,7 +244,6 @@ export const searchSpotify = async (token: string, q: string, type: string) => {
     console.log(err);
   }
 };
-//!
 
 //* controllers
 const getSearchedMusic = async (
