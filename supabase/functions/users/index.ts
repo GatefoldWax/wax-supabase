@@ -25,12 +25,13 @@ const checkFollows = async (username): Promise<void> => {
   return rows[0];
 };
 
-const updateFollows = async (username, new_follow): Promise<void> => {
+const updateFollows = async (username, newFollows): Promise<void> => {
   const formattedQuery = format(
     `UPDATE users
-    WHERE username = %s
-    SET
+    SET following = '{%s}'
+    WHERE username = '%s'
     ;`,
+    newFollows,
     username
   );
   const { rows } = await db.queryObject(formattedQuery);
@@ -48,17 +49,34 @@ const getFollows = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-const addFriend = async (req: Request, res: Response, next: NextFunction) => {
-  const { new_follow } = req.body;
+const addOrRemoveFriend = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { new_follow, follow_request } = req.body;
   const { username } = req.params;
   try {
     const { following } = await checkFollows(username);
-    if (!following.includes(new_follow)) {
-      await updateFollows(username, new_follow);
+    console.log("🚀 ~ following:", following)
+    if (!following.includes(new_follow) && follow_request) {
+      const newFollows = [...following, new_follow];
+      await updateFollows(username, newFollows);
       res
         .status(200)
         .send({ msg: `${username} is now following ${new_follow}` });
-    } else res.status(400).send({msg: "User already followed"})
+    }
+    else if (following.includes(new_follow) && !follow_request) {
+      const newFollows = following.filter((user) => {
+        return user !== new_follow;
+      });
+      console.log("🚀 ~ newFollows ~ newFollows:", newFollows)
+
+      await updateFollows(username, newFollows);
+      res
+        .status(200)
+        .send({ msg: `${username} is no longer following ${new_follow}` });
+    } else res.status(400).send({ msg: "User already followed" });
   } catch (err) {
     next(err);
   }
@@ -67,8 +85,7 @@ const addFriend = async (req: Request, res: Response, next: NextFunction) => {
 //* router
 const reviewRouter = Router();
 
-reviewRouter.route("/:username").get(getFollows);
-// .patch(addFriend);
+reviewRouter.route("/:username").get(getFollows).patch(addOrRemoveFriend);
 
 //* error handlers
 const handleCustomError: ErrorRequestHandler = (err, _req, res, next) => {
