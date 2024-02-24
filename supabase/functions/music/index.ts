@@ -56,8 +56,8 @@ const selectAllMusic = (
 		: ``;
 
 	const orderBy = queries?.order
-		? `release_date ${queries?.order}`
-		: `release_date DESC`;
+		? `last_reviewed ${queries?.order}`
+		: `last_reviewed DESC`;
 
 	const pagination =
 		queries?.p && !all ? `OFFSET ${parseInt(queries?.p) * 30 - 30}` : ``;
@@ -69,16 +69,17 @@ const selectAllMusic = (
 			? `,  ROUND(AVG(reviews.rating),1) AS avg_rating `
 			: ``;
 
-	const groupAvgRating =
-		queries?.avg_rating === "true" ? `GROUP BY music.music_id` : ``;
+	const groupByMusicId = `GROUP BY music.music_id`;
 
-	const joinAvgRating =
-		queries?.avg_rating === "true"
-			? `FULL JOIN reviews ON music.music_id = reviews.music_id`
-			: ``;
+	// const joinAvgRating =
+	// 	queries?.avg_rating === "true"
+	// 		? `FULL JOIN reviews ON music.music_id = reviews.music_id`
+	// 		: ``;
+
+	const joinAvgRating = `FULL JOIN reviews ON music.music_id = reviews.music_id`;
 
 	const formattedMusicQuery = format(
-		`SELECT music.music_id, artist_ids, artist_names, name, type, tracks, album_id, genres, preview, album_img, release_date %s FROM music
+		`SELECT music.music_id, artist_ids, artist_names, name, type, tracks, album_id, genres, preview, album_img, release_date, MAX(reviews.created_at) AS last_reviewed %s FROM music
     %s
     %s
     %s
@@ -93,22 +94,20 @@ const selectAllMusic = (
 		whereMusic_id,
 		whereArtist_ids,
 		whereGenres,
-		groupAvgRating,
+		groupByMusicId,
 		orderBy,
 		limit,
 		pagination
 	);
 
-	return db
-		.queryObject(formattedMusicQuery)
-		.then(({ rows  }) => {
-			if (!rows.length) {
-				return Promise.reject({ status: 404, msg: "not found" });
-			} else if (rows.length === 1) {
-				return rows[0] as Music;
-			}
-			return rows as Music[];
-		});
+	return db.queryObject(formattedMusicQuery).then(({ rows }) => {
+		if (!rows.length) {
+			return Promise.reject({ status: 404, msg: "not found" });
+		} else if (rows.length === 1) {
+			return rows[0] as Music;
+		}
+		return rows as Music[];
+	});
 };
 
 const handleDate = (date: string) => {
@@ -166,11 +165,7 @@ const insertMusic = async (music: Music | Music[]) => {
 };
 
 //* controllers
-const getAllMusic = async (
-	req: Request,
-	res: Response,
-	next: NextFunction
-) => {
+const getAllMusic = async (req: Request, res: Response, next: NextFunction) => {
 	try {
 		await db.connect();
 		selectAllMusic(req.query)
@@ -182,7 +177,7 @@ const getAllMusic = async (
 				console.log(err);
 			});
 	} catch (err) {
-		next(err)
+		next(err);
 	}
 };
 
