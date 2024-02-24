@@ -36,7 +36,7 @@ interface MusicQueries {
 }
 
 //* models
-const selectAllMusic = async (
+const selectAllMusic = (
 	queries?: MusicQueries,
 	all?: boolean
 ): Promise<Music | Music[]> => {
@@ -101,13 +101,13 @@ const selectAllMusic = async (
 
 	return db
 		.queryObject(formattedMusicQuery)
-		.then(({ rows }: { rows: Music[] }) => {
+		.then(({ rows  }) => {
 			if (!rows.length) {
 				return Promise.reject({ status: 404, msg: "not found" });
 			} else if (rows.length === 1) {
-				return rows[0];
+				return rows[0] as Music;
 			}
-			return rows;
+			return rows as Music[];
 		});
 };
 
@@ -170,16 +170,20 @@ const getAllMusic = async (
 	req: Request,
 	res: Response,
 	next: NextFunction
-): void => {
-	await db.connect();
-	selectAllMusic(req.query)
-		.then(async (music) => {
-			await db.end();
-			res.status(200).send({ music });
-		})
-		.catch((err: Error) => {
-			console.log(err);
-		});
+) => {
+	try {
+		await db.connect();
+		selectAllMusic(req.query)
+			.then(async (music) => {
+				await db.end();
+				res.status(200).send({ music });
+			})
+			.catch((err: Error) => {
+				console.log(err);
+			});
+	} catch (err) {
+		next(err)
+	}
 };
 
 const addMusic = async (req: Request, res: Response, next: NextFunction) => {
@@ -189,7 +193,7 @@ const addMusic = async (req: Request, res: Response, next: NextFunction) => {
 		(await insertMusic(body)) && res.status(201).send({ msg: "created" });
 		await db.end();
 	} catch (err) {
-		console.log(err);
+		next(err);
 	}
 };
 
@@ -199,13 +203,23 @@ const musicRouter = Router();
 musicRouter.route("/").get(getAllMusic).post(addMusic);
 
 //* error handlers
-const handleCustomError: ErrorRequestHandler = (err, _req, res, next) => {
+const handleCustomError: ErrorRequestHandler = (
+	err: ErrorRequestHandler,
+	_req: Request,
+	res: Response,
+	next: NextFunction
+) => {
 	if (err.status) {
 		res.status(err.status).send({ msg: err.msg });
 	} else next(err);
 };
 
-const handlePsqlErrors: ErrorRequestHandler = (err, _req, res, next) => {
+const handlePsqlErrors: ErrorRequestHandler = (
+	err: ErrorRequestHandler,
+	_req: Request,
+	res: Response,
+	next: NextFunction
+) => {
 	switch (err.code) {
 		case "22P02":
 		case "23502":
@@ -224,7 +238,12 @@ const handle404 = (_req: Request, res: Response) => {
 	res.status(404).send({ msg: "incorrect path - path not found" });
 };
 
-const handleServerErrors: ErrorRequestHandler = (err, _req, res, next) => {
+const handleServerErrors: ErrorRequestHandler = (
+	err: ErrorRequestHandler,
+	_req: Request,
+	res: Response,
+	_next: NextFunction
+) => {
 	console.log(err);
 	res.status(500).send({ msg: "internal server error" });
 };
@@ -234,6 +253,8 @@ const app = express();
 app.use(express.json());
 
 app.use("/music", musicRouter);
+
+app.all("*", handle404);
 
 app.use(handlePsqlErrors);
 app.use(handleCustomError);
