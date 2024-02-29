@@ -93,8 +93,6 @@ const selectAllMusic = (
 		pagination
 	);
 
-	console.log("🚀 ~ formattedMusicQuery:", formattedMusicQuery);
-
 	return db.queryObject(formattedMusicQuery).then(({ rows }) => {
 		if (!rows.length) {
 			return Promise.reject({ status: 404, msg: "not found" });
@@ -146,11 +144,11 @@ const insertMusic = async (music: Music | Music[]) => {
 
 	const formattedMusicQuery = format(
 		`INSERT INTO music
-    (music_id, artist_ids, artist_names, name, type, tracks, album_id, preview, album_img, release_date)
-    VALUES
-    %L
-    RETURNING *
-    ;`,
+		(music_id, artist_ids, artist_names, name, type, tracks, album_id, preview, album_img, release_date)
+		VALUES
+		%L
+		RETURNING *
+		;`,
 		formattedMusic
 	);
 
