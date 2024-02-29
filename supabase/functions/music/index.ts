@@ -71,14 +71,19 @@ const selectAllMusic = (
 
 	const groupByMusicId = `GROUP BY music.music_id`;
 
+	const havingClause = whereMusic_id || whereArtist_ids || whereGenres
+			? ""
+			: "HAVING MAX(reviews.created_at) IS NOT NULL"
+
 	const formattedMusicQuery = format(
 		`SELECT music.music_id, artist_ids, artist_names, name, type, tracks, album_id, genres, preview, album_img, release_date, MAX(reviews.created_at) AS last_reviewed %s FROM music
 		FULL JOIN reviews ON music.music_id = reviews.music_id
 		%s
 		%s
 		%s
+		
 		%s
-		HAVING MAX(created_at) IS NOT NULL
+		%s
 		ORDER BY %s
 		%s
 		%s
@@ -88,6 +93,7 @@ const selectAllMusic = (
 		whereArtist_ids,
 		whereGenres,
 		groupByMusicId,
+		havingClause,
 		orderBy,
 		limit,
 		pagination
