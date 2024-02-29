@@ -71,26 +71,19 @@ const selectAllMusic = (
 
 	const groupByMusicId = `GROUP BY music.music_id`;
 
-	// const joinAvgRating =
-	// 	queries?.avg_rating === "true"
-	// 		? `FULL JOIN reviews ON music.music_id = reviews.music_id`
-	// 		: ``;
-
-	const joinAvgRating = `FULL JOIN reviews ON music.music_id = reviews.music_id`;
-
 	const formattedMusicQuery = format(
 		`SELECT music.music_id, artist_ids, artist_names, name, type, tracks, album_id, genres, preview, album_img, release_date, MAX(reviews.created_at) AS last_reviewed %s FROM music
-    %s
-    %s
-    %s
-    %s
-    %s
-    ORDER BY %s
-    %s
-    %s
-    ;`,
+		FULL JOIN reviews ON music.music_id = reviews.music_id
+		%s
+		%s
+		%s
+		%s
+		HAVING MAX(created_at) IS NOT NULL
+		ORDER BY %s
+		%s
+		%s
+		;`,
 		aggAvgRating,
-		joinAvgRating,
 		whereMusic_id,
 		whereArtist_ids,
 		whereGenres,
@@ -99,6 +92,8 @@ const selectAllMusic = (
 		limit,
 		pagination
 	);
+
+	console.log("🚀 ~ formattedMusicQuery:", formattedMusicQuery);
 
 	return db.queryObject(formattedMusicQuery).then(({ rows }) => {
 		if (!rows.length) {
