@@ -23,19 +23,28 @@ interface Review {
 }
 
 //* models
-const selectReviews = async (id?: string): Promise<Review[]> => {
-	const whereClause = id ? `WHERE music_id = '${id}'` : "";
+const selectReviews = async (
+	id?: string,
+	username: string
+): Promise<Review[]> => {
+	const userReview = await db.queryObject(`SELECT * FROM reviews
+		WHERE music_id = '${id}' AND username = '${username}'
+		ORDER BY created_at DESC
+		;`);
+	console.log("🚀 ~ userReview:", userReview);
 
-	const formattedQuery = format(
-		`SELECT * FROM reviews
-    %s
-    ORDER BY created_at DESC
-    ;`,
-		whereClause
-	);
+	const { rows } = await db.queryObject(`SELECT * FROM reviews
+		WHERE music_id = '${id}' AND username != '${username}'
+		ORDER BY created_at DESC
+		;`);
+	console.log("🚀 ~ rows:", rows);
 
-	const { rows } = await db.queryObject(formattedQuery);
-	return rows as Review[];
+	return {
+		reviews: { userReview: userReview.rows[0], globalReviews: rows } as {
+			userReview: Review | null;
+			globalReviews: Review[];
+		},
+	};
 };
 
 const insertReview = async (
@@ -88,12 +97,12 @@ const getReviewsById = async (
 	res: Response,
 	next: NextFunction
 ): Promise<void> => {
-	const { music_id } = req.params;
+	const { music_id, username } = req.params;
 	try {
 		await db.connect();
-		const reviews = await selectReviews(music_id);
+		const reviews = await selectReviews(music_id, username);
 		await db.end();
-		res.status(200).send({ reviews });
+		res.status(200).send(reviews);
 	} catch (err) {
 		next(err);
 	}
@@ -108,7 +117,7 @@ const getAllReviews = async (
 		await db.connect();
 		const reviews = await selectReviews();
 		await db.end();
-		res.status(200).send({ reviews });
+		res.status(200).send(reviews);
 	} catch (err) {
 		next(err);
 	}
@@ -161,7 +170,10 @@ const reviewRouter = Router();
 
 reviewRouter.route("/").get(getAllReviews);
 
-reviewRouter.route("/:music_id").get(getReviewsById).post(postReviewById);
+reviewRouter
+	.route("/:music_id/:username")
+	.get(getReviewsById)
+	.post(postReviewById);
 
 reviewRouter.route("/:review_id").delete(removeReview);
 
