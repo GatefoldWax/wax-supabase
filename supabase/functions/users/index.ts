@@ -58,7 +58,6 @@ const addOrRemoveFriend = async (
 	const { username } = req.params;
 	try {
 		const { following } = await checkFollows(username);
-		console.log("🚀 ~ following:", following);
 		if (!following.includes(new_follow) && follow_request) {
 			const newFollows = [...following, new_follow];
 			await updateFollows(username, newFollows);
@@ -69,7 +68,6 @@ const addOrRemoveFriend = async (
 			const newFollows = following.filter((user: string) => {
 				return user !== new_follow;
 			});
-			console.log("🚀 ~ newFollows ~ newFollows:", newFollows);
 
 			await updateFollows(username, newFollows);
 			res.status(200).send({

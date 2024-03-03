@@ -24,20 +24,18 @@ interface Review {
 
 //* models
 const selectReviews = async (
-	id?: string,
+	id: string,
 	username: string
 ): Promise<Review[]> => {
 	const userReview = await db.queryObject(`SELECT * FROM reviews
 		WHERE music_id = '${id}' AND username = '${username}'
 		ORDER BY created_at DESC
 		;`);
-	console.log("🚀 ~ userReview:", userReview);
 
 	const { rows } = await db.queryObject(`SELECT * FROM reviews
 		WHERE music_id = '${id}' AND username != '${username}'
 		ORDER BY created_at DESC
 		;`);
-	console.log("🚀 ~ rows:", rows);
 
 	return {
 		reviews: { userReview: userReview.rows[0], globalReviews: rows } as {
