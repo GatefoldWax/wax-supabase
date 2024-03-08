@@ -227,7 +227,7 @@ export const searchSpotify = async (
 					),
 					name: item.name,
 					type: item.type,
-					tracks: null,
+					tracks: [],
 					album_id: item.album.id,
 					genres: null,
 					preview: item.preview_url,
@@ -259,10 +259,7 @@ export const searchSpotify = async (
 	}
 };
 
-const searchSpotifyTracks = async (
-	token: string,
-	music_id?: string
-) => {
+const searchSpotifyTracks = async (token: string, music_id?: string) => {
 	const reqString = `https://api.spotify.com/v1/albums/${music_id}/tracks?limit=50`;
 
 	try {
@@ -274,11 +271,44 @@ const searchSpotifyTracks = async (
 			},
 		});
 
-    console.log(matchedTracks.data.items);
-    
-    return matchedTracks.data.items;
+		const formattedTracks = matchedTracks.data.items.map((track) => {
+			return {
+				name: track.name,
+				id: track.id,
+				track_number: track.track_number,
+				disc_number: track.disc_number,
+				spotify_url: track.external_urls.spotify,
+			};
+		});
+
+		return formattedTracks;
 	} catch (e) {
 		console.log(e);
+	}
+};
+
+const updateTrackList = async (tracks, music_id) => {
+	try {
+		await db.connect();
+
+		for (let i = 0; i < tracks.length; i++) {
+			tracks[i].name = tracks[i].name.replace(/\'/g, "''")
+		}
+		
+
+		const formattedTrackQuery = format(
+			`
+			UPDATE music
+			SET tracks = '%s'
+			WHERE music_id = '%s'
+			;`,
+			JSON.stringify(tracks),
+			music_id
+		);
+
+		await db.queryObject(formattedTrackQuery);
+	} catch (err) {
+		console.log(err);
 	}
 };
 
@@ -325,17 +355,20 @@ const getSearchedMusic = async (
 	}
 };
 
-const getAlbumTracks = async (req: Request, res: Response, next: NextFunction) => {
+const getAlbumTracks = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+) => {
 	const { music_id } = req.params;
 
 	const { access_token } = await refreshAccessToken();
 
-	const matchedTracks = await searchSpotifyTracks(
-		access_token,
-		music_id
-	);
+	const matchedTracks = await searchSpotifyTracks(access_token, music_id);
 
-	res.status(200).send({ music: matchedTracks });
+	await updateTrackList(matchedTracks, music_id);
+
+	res.status(200).send({ tracks: matchedTracks });
 };
 
 //* router
