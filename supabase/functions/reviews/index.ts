@@ -5,7 +5,6 @@ import express, {
 	Router,
 	ErrorRequestHandler,
 } from "npm:express@4.18.2";
-import format from "npm:pg-format";
 import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
 
 //* connection
@@ -27,11 +26,13 @@ const selectReviews = async (
 	id: string,
 	username: string
 ): Promise<Review[]> => {
-	username !== "guest" &&
-		(await db.queryObject(`SELECT * FROM reviews
+	const userReview =
+		username !== "guest"
+			? await db.queryObject(`SELECT * FROM reviews
 	WHERE music_id = '${id}' AND username = '${username}'
 	ORDER BY created_at DESC
-	;`));
+	;`)
+			: null;
 
 	const { rows } = await db.queryObject(`SELECT * FROM reviews
 		WHERE music_id = '${id}' ${
@@ -42,7 +43,7 @@ const selectReviews = async (
 
 	return {
 		reviews: {
-			userReview: username !== "guest" ? userReview.rows[0] : null,
+			userReview: userReview ? userReview.rows[0] : null,
 			globalReviews: rows,
 		} as {
 			userReview: Review | null;
