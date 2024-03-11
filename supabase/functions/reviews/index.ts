@@ -27,18 +27,24 @@ const selectReviews = async (
 	id: string,
 	username: string
 ): Promise<Review[]> => {
-	const userReview = await db.queryObject(`SELECT * FROM reviews
-		WHERE music_id = '${id}' AND username = '${username}'
-		ORDER BY created_at DESC
-		;`);
+	username !== "guest" &&
+		(await db.queryObject(`SELECT * FROM reviews
+	WHERE music_id = '${id}' AND username = '${username}'
+	ORDER BY created_at DESC
+	;`));
 
 	const { rows } = await db.queryObject(`SELECT * FROM reviews
-		WHERE music_id = '${id}' AND username != '${username}'
+		WHERE music_id = '${id}' ${
+		username !== "guest" ? `AND username != '${username}'` : ""
+	}
 		ORDER BY created_at DESC
 		;`);
 
 	return {
-		reviews: { userReview: userReview.rows[0], globalReviews: rows } as {
+		reviews: {
+			userReview: username !== "guest" ? userReview.rows[0] : null,
+			globalReviews: rows,
+		} as {
 			userReview: Review | null;
 			globalReviews: Review[];
 		},
