@@ -71,9 +71,10 @@ const selectAllMusic = (
 
 	const groupByMusicId = `GROUP BY music.music_id`;
 
-	const havingClause = whereMusic_id || whereArtist_ids || whereGenres
+	const havingClause =
+		whereMusic_id || whereArtist_ids || whereGenres
 			? ""
-			: "HAVING MAX(reviews.created_at) IS NOT NULL"
+			: "HAVING MAX(reviews.created_at) IS NOT NULL";
 
 	const formattedMusicQuery = format(
 		`SELECT music.music_id, artist_ids, artist_names, name, type, tracks, album_id, genres, preview, album_img, release_date, MAX(reviews.created_at) AS last_reviewed %s FROM music
@@ -169,6 +170,14 @@ const getAllMusic = async (req: Request, res: Response, next: NextFunction) => {
 		await db.connect();
 		selectAllMusic(req.query)
 			.then(async (music) => {
+				Array.isArray(music) && music.tracks
+					? music.forEach((item, index) => {
+							music[index].tracks = JSON.parse(item.tracks);
+					  })
+					: (music.tracks = music.tracks
+							? JSON.parse(music.tracks)
+							: null);
+
 				await db.end();
 				res.status(200).send({ music });
 			})
