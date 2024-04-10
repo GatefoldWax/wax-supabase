@@ -96,6 +96,18 @@ const deleteReview = async (id: string) => {
 	if (!rows.length) return Promise.reject({ status: 404, msg: "not found" });
 };
 
+const selectReviewsByUsername = async (username: string): Promise<Review[]> => {
+	const { rows } = await db.queryObject(
+		`SELECT * FROM reviews
+		WHERE username = $1
+		ORDER BY created_at DESC
+		;`,
+		[username]
+	);
+	
+	return rows as Review[];
+};
+
 //* controllers
 const getReviewsById = async (
 	req: Request,
@@ -170,6 +182,22 @@ const removeReview = async (
 	}
 };
 
+const getReviewsByUsername = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+) => {
+	const { username } = req.params;
+	try {
+		await db.connect();
+		const reviews = await selectReviewsByUsername(username);
+		await db.end();
+		res.status(200).send({ reviews });
+	} catch (err) {
+		next(err);
+	}
+};
+
 //* router
 const reviewRouter = Router();
 
@@ -181,6 +209,8 @@ reviewRouter
 	.post(postReviewById);
 
 reviewRouter.route("/:review_id").delete(removeReview);
+
+reviewRouter.route("/:username").get(getReviewsByUsername);
 
 //* error handlers
 const handleCustomError: ErrorRequestHandler = (err, _req, res, next) => {
