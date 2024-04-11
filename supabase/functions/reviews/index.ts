@@ -98,7 +98,7 @@ const deleteReview = async (id: string) => {
 
 const selectReviewsByUsername = async (username: string): Promise<Review[]> => {
 	const { rows } = await db.queryObject(
-		`SELECT reviews.*, music.music_id, music.artist_names, music.name, music.album_img
+		`SELECT reviews.*, music.artist_names, music.name, music.album_img
 		FROM reviews
 		JOIN music ON reviews.music_id = music.music_id
 		WHERE username = $1
