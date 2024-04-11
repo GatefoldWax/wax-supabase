@@ -87,9 +87,9 @@ const insertReview = async (
 const deleteReview = async (id: string) => {
 	const { rows } = await db.queryObject(
 		`DELETE FROM reviews
-    WHERE review_id = $1
-    RETURNING *
-    ;`,
+		WHERE review_id = $1
+		RETURNING *
+		;`,
 		[id]
 	);
 
@@ -98,7 +98,9 @@ const deleteReview = async (id: string) => {
 
 const selectReviewsByUsername = async (username: string): Promise<Review[]> => {
 	const { rows } = await db.queryObject(
-		`SELECT * FROM reviews
+		`SELECT reviews.*, music.music_id, music.artist_names, music.name, music.album_img
+		FROM reviews
+		JOIN music ON reviews.music_id = music.music_id
 		WHERE username = $1
 		ORDER BY created_at DESC
 		;`,
