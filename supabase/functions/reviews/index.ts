@@ -5,7 +5,6 @@ import express, {
 	Router,
 	ErrorRequestHandler,
 } from "npm:express@4.18.2";
-import format from "npm:pg-format";
 import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts";
 
 //* connection
@@ -27,18 +26,26 @@ const selectReviews = async (
 	id: string,
 	username: string
 ): Promise<Review[]> => {
-	const userReview = await db.queryObject(`SELECT * FROM reviews
-		WHERE music_id = '${id}' AND username = '${username}'
-		ORDER BY created_at DESC
-		;`);
+	const userReview =
+		username !== "guest"
+			? await db.queryObject(`SELECT * FROM reviews
+	WHERE music_id = '${id}' AND username = '${username}'
+	ORDER BY created_at DESC
+	;`)
+			: null;
 
 	const { rows } = await db.queryObject(`SELECT * FROM reviews
-		WHERE music_id = '${id}' AND username != '${username}'
+		WHERE music_id = '${id}' ${
+		username !== "guest" ? `AND username != '${username}'` : ""
+	}
 		ORDER BY created_at DESC
 		;`);
 
 	return {
-		reviews: { userReview: userReview.rows[0], globalReviews: rows } as {
+		reviews: {
+			userReview: userReview ? userReview.rows[0] : null,
+			globalReviews: rows,
+		} as {
 			userReview: Review | null;
 			globalReviews: Review[];
 		},
@@ -80,13 +87,27 @@ const insertReview = async (
 const deleteReview = async (id: string) => {
 	const { rows } = await db.queryObject(
 		`DELETE FROM reviews
-    WHERE review_id = $1
-    RETURNING *
-    ;`,
+		WHERE review_id = $1
+		RETURNING *
+		;`,
 		[id]
 	);
 
 	if (!rows.length) return Promise.reject({ status: 404, msg: "not found" });
+};
+
+const selectReviewsByUsername = async (username: string): Promise<Review[]> => {
+	const { rows } = await db.queryObject(
+		`SELECT reviews.*, music.artist_names, music.name, music.album_img
+		FROM reviews
+		JOIN music ON reviews.music_id = music.music_id
+		WHERE username = $1
+		ORDER BY created_at DESC
+		;`,
+		[username]
+	);
+	
+	return rows as Review[];
 };
 
 //* controllers
@@ -163,6 +184,22 @@ const removeReview = async (
 	}
 };
 
+const getReviewsByUsername = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+) => {
+	const { username } = req.params;
+	try {
+		await db.connect();
+		const reviews = await selectReviewsByUsername(username);
+		await db.end();
+		res.status(200).send({ reviews });
+	} catch (err) {
+		next(err);
+	}
+};
+
 //* router
 const reviewRouter = Router();
 
@@ -174,6 +211,8 @@ reviewRouter
 	.post(postReviewById);
 
 reviewRouter.route("/:review_id").delete(removeReview);
+
+reviewRouter.route("/:username").get(getReviewsByUsername);
 
 //* error handlers
 const handleCustomError: ErrorRequestHandler = (err, _req, res, next) => {
