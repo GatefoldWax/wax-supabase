@@ -16,13 +16,13 @@ const db = new Client(Deno.env.get("DB_CONN_STR"));
 //* models
 const selectPrivacyPolicy = async () => {
 	const formattedQuery = format(
-		`SELECT body FROM privacy_policies
+		`SELECT body, id FROM privacy_policies
         ORDER BY id DESC
         LIMIT 1
         ;`
 	);
 	const { rows } = await db.queryObject(formattedQuery);
-	return rows[0] as { body: string };
+	return rows[0] as { body: string; id: number };
 };
 
 //* controllers
