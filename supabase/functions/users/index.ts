@@ -46,7 +46,9 @@ const selectMatchedUsers = async (username: string) => {
 		username
 	);
 	const { rows } = await db.queryObject(formattedQuery);
-	return rows[0] as { following: string[] };
+	return {
+		users: rows.map((user: { username: string }) => user.username)
+	}
 };
 
 //* controllers
