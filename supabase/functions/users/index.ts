@@ -17,8 +17,8 @@ const db = new Client(Deno.env.get("DB_CONN_STR"));
 const checkFollows = async (username: string) => {
 	const formattedQuery = format(
 		`SELECT following FROM users
-    WHERE username = '%s'
-    ;`,
+		WHERE username = '%s'
+		;`,
 		username
 	);
 	const { rows } = await db.queryObject(formattedQuery);
@@ -28,14 +28,25 @@ const checkFollows = async (username: string) => {
 const updateFollows = async (username: string, newFollows: string[]) => {
 	const formattedQuery = format(
 		`UPDATE users
-    SET following = '{%s}'
-    WHERE username = '%s'
-    ;`,
+		SET following = '{%s}'
+		WHERE username = '%s'
+		;`,
 		newFollows,
 		username
 	);
 	const { rows } = await db.queryObject(formattedQuery);
 	return rows;
+};
+
+const selectMatchedUsers = async (username: string) => {
+	const formattedQuery = format(
+		`SELECT username FROM users
+		WHERE username ILIKE '%%%s%%'
+		;`,
+		username
+	);
+	const { rows } = await db.queryObject(formattedQuery);
+	return rows[0] as { following: string[] };
 };
 
 //* controllers
@@ -79,10 +90,29 @@ const addOrRemoveFriend = async (
 	}
 };
 
+const getMatchedUsers = async (
+	req: Request,
+	res: Response,
+	next: NextFunction
+) => {
+	const { username } = req.params;
+	try {
+		const users = await selectMatchedUsers(username);
+		res.status(200).send(users);
+	} catch (err) {
+		next(err);
+	}
+};
+
 //* router
 const reviewRouter = Router();
 
-reviewRouter.route("/:username").get(getFollows).patch(addOrRemoveFriend);
+reviewRouter.route("/:username").get(getMatchedUsers);
+
+reviewRouter
+	.route("/:username/followers")
+	.get(getFollows)
+	.patch(addOrRemoveFriend);
 
 //* error handlers
 const handleCustomError: ErrorRequestHandler = (
